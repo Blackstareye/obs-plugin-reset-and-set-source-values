@@ -56,23 +56,34 @@ def on_path_update(props, prop, settings):
   #TODO mit dem hier müsste ich evtl eine modified list hinbekommen
   
 
+def loadSettings(sourcename, reset: bool=True):
+  source = obs.obs_get_source_by_name(sourcename)
+  settings = obs.obs_source_get_settings(source)
 
-def resetSettings(settings):
-  obs.obs_soure_reset_settings(settings);
+  if reset:
+    obs.obs_soure_reset_settings(settings);   
+  p = "/projects/tmp_dev/obs-plugin/python/data.json" #TODO echter pfad noch obs.obs_data_get_string(settings, PropertyKeys.PATH_TO_SETTING_FILE.value);
 
-def loadSettings(source, settings):
-  p = obs.obs_data_get_string(settings, PropertyKeys.PATH_TO_SETTING_FILE.value);
-  data = obs.obs_data_create_from_json_file_safe(p, Path(p).joinpath("backup.json").as_posix);
-  jsettings = json.load(obs.obs_data_get_json(settings))
-  jdata = json.load(obs.obs_data_get_json(data))
+  data = obs.obs_data_create_from_json_file_safe(p, Path(p).joinpath("backup.json").as_posix());
+  print(f"path: {p}")
+  print(f"data {obs.obs_data_get_json(data)}")
+  if data:
+    jdata = json.loads(obs.obs_data_get_json(data))
+    print(f"data {jdata}")
+  
+  jsettings = json.loads(obs.obs_data_get_json(settings))
+  print(f"settings {jsettings}")
 
-  for nk, nv in jdata:
+  for nk, nv in jdata.items():
         if nk in jsettings:
             print(f"New Value ${nk} with {nv}")
-            obs.obs_data_set_string(settings, nk, nv)
+            obs.obs_data_set_bool(settings, nk, nv) #TODO entscheiden wann bool wann string
   obs.obs_source_update(source, settings)
 
   obs.obs_data_release(data)
+  obs.obs_data_release(settings)
+  obs.obs_source_release(source)
+
 #   print(obs.obs_data_get_json(settings))
 #   print("---------- new_data ----------")
 #   print(obs.obs_data_get_json(data))
@@ -107,7 +118,7 @@ def script_properties():
   # Drop-down list of sources
   PropertyUtils.addSourceListAndButton(props)
   PropertyUtils.addFilePath(props)
-  PropertyUtils.resetSettings(props, lambda x : print("Hello"))
+  PropertyUtils.resetSettings(props, lambda : loadSettings(PropertyUtils.getSource(),  False))
   PropertyUtils.printSettings(props, lambda: print_settings(PropertyUtils.getSource()))
   PropertyUtils.addFileContent(props)
   return props
