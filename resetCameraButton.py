@@ -1,4 +1,5 @@
 import obspython as obs
+import json
 from pathlib import Path
 
 from enum import Enum
@@ -8,6 +9,8 @@ class PropertyKeys(Enum):
     REFRESH_LIST = "refreshbutton"
     PATH_TO_SETTING_FILE = "path_to_setting_file"
     FILE_CONTENT_TXT = "fileInfo"
+    RESET_SETTINGS = "reset_settings"
+    PRINT_SETTINGS = "print_settings"
 
 print("Hello world!")
 
@@ -63,6 +66,8 @@ def loadSettings():
 # Called after change of settings including once after script load
 # TODO on modification or something hook
 def script_update(settings):
+   global settinginstance;
+   settinginstance = settings
    PropertyUtils.loadFileContentInField(settings)
 
 
@@ -78,10 +83,19 @@ def script_properties():
   # Drop-down list of sources
   PropertyUtils.addSourceListAndButton(props)
   PropertyUtils.addFilePath(props)
+  PropertyUtils.printSettings(props, lambda: print_settings(PropertyUtils.getSource()))
   PropertyUtils.addFileContent(props)
   return props
 
 
+
+def print_settings(source):
+    source = obs.obs_get_source_by_name(source)
+    settings = obs.obs_source_get_settings(source)
+    print("[---------- settings ----------")
+    print(obs.obs_data_get_json_pretty(settings))
+    obs.obs_data_release(settings)
+    obs.obs_source_release(source)
 
 
 # ===================== Helper
@@ -100,6 +114,15 @@ class PropertyUtils:
     def addFileContent(cls, props):
        obs.obs_properties_add_text(props, PropertyKeys.FILE_CONTENT_TXT.value, "Displays the File Content", obs.OBS_TEXT_INFO | obs.OBS_TEXT_MULTILINE)
     
+    @classmethod
+    def resetSettings(cls, props, callback):
+       obs.obs_properties_add_button(props, PropertyKeys.RESET_SETTINGS.value, "Reset and set Defaults",
+        lambda props,prop: True if callback() else True)
+    @classmethod
+    def printSettings(cls, props, callback):
+       obs.obs_properties_add_button(props, PropertyKeys.PRINT_SETTINGS.value, "Print Settings",
+        lambda props,prop: True if callback() else True)
+
     @classmethod
     def addSourceListAndButton(cls, props):
         list_property = obs.obs_properties_add_list(props, PropertyKeys.SOURCE_NAME.value, "Source name",
@@ -128,6 +151,12 @@ class PropertyUtils:
             obs.obs_property_list_add_string(list_property, name, name)
         obs.source_list_release(sources)
        
+    @classmethod
+    def getSource(cls):
+       global settinginstance;
+       l = obs.obs_data_get_string(settinginstance, PropertyKeys.SOURCE_NAME.value);
+       print(f"source is {l}")
+       return l
     
    
 
