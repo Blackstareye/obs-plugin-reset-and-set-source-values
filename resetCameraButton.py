@@ -2,6 +2,7 @@ import obspython as obs
 import json
 from pathlib import Path
 
+
 from enum import Enum
 
 class PropertyKeys(Enum):
@@ -56,13 +57,36 @@ def on_path_update(props, prop, settings):
   
 
 
-def resetSettings():
-  pass
+def resetSettings(settings):
+  obs.obs_soure_reset_settings(settings);
 
-def loadSettings():
-  pass
+def loadSettings(source, settings):
+  p = obs.obs_data_get_string(settings, PropertyKeys.PATH_TO_SETTING_FILE.value);
+  data = obs.obs_data_create_from_json_file_safe(p, Path(p).joinpath("backup.json").as_posix);
+  jsettings = json.load(obs.obs_data_get_json(settings))
+  jdata = json.load(obs.obs_data_get_json(data))
+
+  for nk, nv in jdata:
+        if nk in jsettings:
+            print(f"New Value ${nk} with {nv}")
+            obs.obs_data_set_string(settings, nk, nv)
+  obs.obs_source_update(source, settings)
+
+  obs.obs_data_release(data)
+#   print(obs.obs_data_get_json(settings))
+#   print("---------- new_data ----------")
+#   print(obs.obs_data_get_json(data))
+#   print(obs.obs_data_get_json(data))
+
+#   print(data)
+#   if p:
+#     data = json.load(p)
+#   for k,d in data:
+#      if 
+#      obs.obs_data_set_string(settings, k, d);
+#apply
   
-
+settinginstance = None
 # Called after change of settings including once after script load
 # TODO on modification or something hook
 def script_update(settings):
@@ -83,6 +107,7 @@ def script_properties():
   # Drop-down list of sources
   PropertyUtils.addSourceListAndButton(props)
   PropertyUtils.addFilePath(props)
+  PropertyUtils.resetSettings(props, lambda x : print("Hello"))
   PropertyUtils.printSettings(props, lambda: print_settings(PropertyUtils.getSource()))
   PropertyUtils.addFileContent(props)
   return props
