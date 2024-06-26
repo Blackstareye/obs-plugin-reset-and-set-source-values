@@ -1,4 +1,4 @@
-# Reset and overwrite values
+# Reset and overwrite source setting values
 
 ![Screenshot](screenshot.png)
 
