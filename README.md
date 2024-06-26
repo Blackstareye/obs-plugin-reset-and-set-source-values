@@ -12,6 +12,7 @@ This can be (or at least it was for me) really cumbersome.
 Thus I coded this script, which can do this for me.
 
 **The Video freezes after pressing the reset button help?**
+
 No worries, you just have to click on the resource and open it and save it.
 Unfortunately I don't know (yet) how to restart the source so that this will not happen.
 
