@@ -5,11 +5,14 @@ from pathlib import Path
 
 from enum import Enum
 
+# change if you filter Video or Audio Sources
 FILERCLASS=obs.OBS_SOURCE_VIDEO
-# log = obs.blog
+# change if the resource should be reset before overwriting
+RESET=True
+
+# Debug enables logging
 DEBUG = True
 USE_OBS_LOGS=False
-#FILERCLASS=obs.OBS_SOURCE_AUDIO
 
       
 
@@ -68,14 +71,18 @@ def script_defaults(settings):
 
 # Description displayed in the Scripts dialog window
 def script_description():
-  return """<center><h2>OBS Camera Reset Button</h2></center>
-            <p> Reset the Camera and trigger two commands. Go to <em>Settings
-            </em> then <em>Hotkeys</em> to select the key combination.</p><p>Check the <a href=
-            "https://github.com/obsproject/obs-studio/wiki/Scripting-Tutorial-Source-Shake.md">
-            Source Shake Scripting Tutorial</a> on the OBS Wiki for more information.</p>"""
+  return """<center><h2>OBS Source Reset and Set Default Values</h2></center>
+            <p> Reset the source and load the values from the chosen json file into the source object. Go to <em>Settings
+            </em> then <em>Hotkeys</em> to select the key combination. created by <a href=https://github.com/Blackstareye>Blackeye</a></p>
+            If you like this Script you can support me via <a href=https://ko-fi.com/black_eye>Kofi</a>
+            """
 
+# Global animation activity flag
+is_active = False
+# Called every frame
 def script_tick(seconds):
-    pass
+  if is_active:
+    loadSettings(dataObject.source_name)
 
 # Called at script unload
 def script_unload():
@@ -83,17 +90,27 @@ def script_unload():
 
 # Called before data settings are saved
 def script_save(settings):
-  pass
+  obs.obs_save_sources()
 
 # Identifier of the hotkey set by OBS
 hotkey_id = obs.OBS_INVALID_HOTKEY_ID
 # Callback for the hotkey
-def on_shake_hotkey(pressed):
-  pass
+def on_hotkey_pressed(pressed):
+  global is_active
+  is_active = pressed
+
+def loadHotkeys():
+  global hotkey_id
+  global settinginstance
+  hotkey_id = obs.obs_hotkey_register_frontend(script_path(), "Reset and Update Settings", on_hotkey_pressed)
+  hotkey_save_array = obs.obs_data_get_array(settinginstance, "reset_update_hotkey")
+  obs.obs_hotkey_load(hotkey_id, hotkey_save_array)
+  obs.obs_data_array_release(hotkey_save_array)
 
 # Called at script load
 def script_load(settings):
     prepare(settings)
+    loadHotkeys()
 
 
 def loadSettings(sourcename, reset: bool=True):
@@ -103,7 +120,8 @@ def loadSettings(sourcename, reset: bool=True):
   settings = obs.obs_source_get_settings(source)
 
   if reset:
-    obs.obs_soure_reset_settings(settings);   
+    obs.obs_source_reset_settings(source,settings);   
+    # obs.obs_source_media_start(source)
   dataObject.printObject()
 
   p = dataObject.file_name
@@ -112,15 +130,17 @@ def loadSettings(sourcename, reset: bool=True):
   log(f"data {obs.obs_data_get_json(data)}")
   if data:
     jdata = json.loads(obs.obs_data_get_json(data))
+    log(f"jdata {jdata}")
   
   jsettings = json.loads(obs.obs_data_get_json(settings))
   log(f"settings {jsettings}")
 
   for nk, nv in jdata.items():
-        if nk in jsettings:
+        #if nk in jsettings:
             log(f"New Value ${nk} with {nv}", force_print=True)
             ObsDataUtility.set_value(settings, nk, nv);
   obs.obs_source_update(source, settings)
+  obs.obs_save_sources()
   # release
   obs.obs_data_release(data)
   obs.obs_data_release(settings)
@@ -133,7 +153,7 @@ def script_properties():
   PropertyUtils.addSourceListAndButton(props)
   PropertyUtils.addFilePath(props)
   PropertyUtils.printSourceSettings(props, lambda: print_settings(PropertyUtils.getSource()))
-  PropertyUtils.updateSettings(props, lambda : loadSettings(PropertyUtils.getSource(),  False))
+  PropertyUtils.updateSettings(props, lambda : loadSettings(PropertyUtils.getSource()))
   PropertyUtils.addFileContent(props)
   return props
 
@@ -219,6 +239,17 @@ class PropertyUtils:
 class ObsDataUtility:
    @classmethod
    def set_value(cls, settings, name, value):
+      
+            # Versuche, in einen Boolean zu konvertieren
+      log(f"trying bool parsing for {value}")
+      #if value.lower() in ('true', '1', 'yes'):
+      if type(value) is bool:
+          #obs.obs_data_set_bool(settings, name, True if value in ('true', '1', 'yes', 1) else False);
+          obs.obs_data_set_bool(settings, name, value);
+          return
+      # elif value.lower() in ('false', '0', 'no'):
+      #     obs.obs_data_set_double(settings, name, False);
+      
       # Versuche, in einen Integer zu konvertieren
       try:
           log(f"trying int parsing for {value}")
@@ -237,14 +268,7 @@ class ObsDataUtility:
       except ValueError:
           pass
       
-      # Versuche, in einen Boolean zu konvertieren
-      log(f"trying bool parsing for {value}")
-      if value.lower() in ('true', '1', 'yes'):
-          obs.obs_data_set_double(settings, name, True);
-          return
-      elif value.lower() in ('false', '0', 'no'):
-          obs.obs_data_set_double(settings, name, False);
-          return
+
       log(f"trying string parsing for {value}")
       obs.obs_data_set_string(settings, name, value);
       
