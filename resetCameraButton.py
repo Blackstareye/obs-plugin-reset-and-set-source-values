@@ -58,6 +58,7 @@ def prepare(settings):
 # TODO on modification or something hook
 def script_update(settings):
    prepare(settings)
+   PropertyUtils.loadFileContentInField(settings)
 
 # Called to set default values of data settings
 def script_defaults(settings):
@@ -103,8 +104,8 @@ def loadSettings(sourcename, reset: bool=True):
 
   if reset:
     obs.obs_soure_reset_settings(settings);   
-  #p = "/projects/tmp_dev/obs-plugin/python/data.json" #TODO echter pfad noch obs.obs_data_get_string(settings, PropertyKeys.PATH_TO_SETTING_FILE.value);
   dataObject.printObject()
+
   p = dataObject.file_name
   data = obs.obs_data_create_from_json_file_safe(p, Path(p).joinpath("backup.json").as_posix());
   log(f"path: {p}")
@@ -119,34 +120,11 @@ def loadSettings(sourcename, reset: bool=True):
         if nk in jsettings:
             log(f"New Value ${nk} with {nv}", force_print=True)
             ObsDataUtility.set_value(settings, nk, nv);
-            #obs.obs_data_set_bool(settings, nk, nv) #TODO entscheiden wann bool wann string
   obs.obs_source_update(source, settings)
-
+  # release
   obs.obs_data_release(data)
   obs.obs_data_release(settings)
   obs.obs_source_release(source)
-
-#   print(obs.obs_data_get_json(settings))
-#   print("---------- new_data ----------")
-#   print(obs.obs_data_get_json(data))
-#   print(obs.obs_data_get_json(data))
-
-#   print(data)
-#   if p:
-#     data = json.load(p)
-#   for k,d in data:
-#      if 
-#      obs.obs_data_set_string(settings, k, d);
-#apply
-  
-
-
-
-# TODO on signal remove hook
-
-# obs_data_create_from_json_file_safe
-# https://docs.obsproject.com/reference-settings#c.obs_data_create_from_json
-
 
 # Called to display the properties GUI
 def script_properties():
@@ -154,8 +132,8 @@ def script_properties():
   # Drop-down list of sources
   PropertyUtils.addSourceListAndButton(props)
   PropertyUtils.addFilePath(props)
-  PropertyUtils.resetSettings(props, lambda : loadSettings(PropertyUtils.getSource(),  False))
-  PropertyUtils.printSettings(props, lambda: print_settings(PropertyUtils.getSource()))
+  PropertyUtils.printSourceSettings(props, lambda: print_settings(PropertyUtils.getSource()))
+  PropertyUtils.updateSettings(props, lambda : loadSettings(PropertyUtils.getSource(),  False))
   PropertyUtils.addFileContent(props)
   return props
 
@@ -179,25 +157,25 @@ class PropertyUtils:
     def addFilePath(cls,props):
         p = Path(__file__).absolute()  # current script path
         pstr : str  = p.parent.as_posix()
-        path = obs.obs_properties_add_path(props, PropertyKeys.PATH_PATH_TO_SETTING_FILE.value, "Path to the setting file", obs.OBS_PATH_FILE, "json", pstr )
+        path = obs.obs_properties_add_path(props, PropertyKeys.PATH_PATH_TO_SETTING_FILE.value, "Setting file:", obs.OBS_PATH_FILE, "json", pstr )
         # TODO modified hook
         
     @classmethod
     def addFileContent(cls, props):
-       obs.obs_properties_add_text(props, PropertyKeys.TXT_FILE_CONTENT.value, "Displays the File Content", obs.OBS_TEXT_INFO | obs.OBS_TEXT_MULTILINE)
+       obs.obs_properties_add_text(props, PropertyKeys.TXT_FILE_CONTENT.value, "File Content:", obs.OBS_TEXT_INFO | obs.OBS_TEXT_MULTILINE)
     
     @classmethod
-    def resetSettings(cls, props, callback):
-       obs.obs_properties_add_button(props, PropertyKeys.BT_RESET_SETTINGS.value, "Reset and set Defaults",
+    def updateSettings(cls, props, callback):
+       obs.obs_properties_add_button(props, PropertyKeys.BT_RESET_SETTINGS.value, "Reset source settings and update values",
         lambda props,prop: True if callback() else True)
     @classmethod
-    def printSettings(cls, props, callback):
-       obs.obs_properties_add_button(props, PropertyKeys.BT_PRINT_SETTINGS.value, "Print Settings",
+    def printSourceSettings(cls, props, callback):
+       obs.obs_properties_add_button(props, PropertyKeys.BT_PRINT_SETTINGS.value, "Print source settings",
         lambda props,prop: True if callback() else True)
 
     @classmethod
     def addSourceListAndButton(cls, props):
-        list_property = obs.obs_properties_add_list(props, PropertyKeys.LISTBOX_SOURCE_NAME.value, "Source name",
+        list_property = obs.obs_properties_add_list(props, PropertyKeys.LISTBOX_SOURCE_NAME.value, "Source name to update",
               obs.OBS_COMBO_TYPE_EDITABLE, obs.OBS_COMBO_FORMAT_STRING)
         
         # Button to refresh the drop-down list
