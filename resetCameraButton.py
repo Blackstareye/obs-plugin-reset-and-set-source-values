@@ -32,6 +32,36 @@ class DataObject(object):
                   setattr(self, key, dictionary[key])
 
 
+# =================== script ======================
+
+settinginstance = None
+dataObject = None
+# Called after change of settings including once after script load
+
+def prepare(settings):
+   global settinginstance;
+   global dataObject;
+   settinginstance = settings
+   dataObject = DataObject(**toObject(settings))
+
+# TODO on modification or something hook
+def script_update(settings):
+   prepare(settings)
+
+# Called to set default values of data settings
+def script_defaults(settings):
+    obs.obs_data_set_default_string(settings, PropertyKeys.LISTBOX_SOURCE_NAME.value, "")
+    obs.obs_data_set_default_string(settings, PropertyKeys.PATH_PATH_TO_SETTING_FILE.value, "")
+    obs.obs_data_set_default_string(settings, PropertyKeys.TXT_FILE_CONTENT.value, "File will be displayed here.")
+
+# Description displayed in the Scripts dialog window
+def script_description():
+  return """<center><h2>OBS Camera Reset Button</h2></center>
+            <p> Reset the Camera and trigger two commands. Go to <em>Settings
+            </em> then <em>Hotkeys</em> to select the key combination.</p><p>Check the <a href=
+            "https://github.com/obsproject/obs-studio/wiki/Scripting-Tutorial-Source-Shake.md">
+            Source Shake Scripting Tutorial</a> on the OBS Wiki for more information.</p>"""
+
 def script_tick(seconds):
     pass
 
@@ -43,36 +73,16 @@ def script_unload():
 def script_save(settings):
   pass
 
+# Identifier of the hotkey set by OBS
+hotkey_id = obs.OBS_INVALID_HOTKEY_ID
 # Callback for the hotkey
 def on_shake_hotkey(pressed):
   pass
 
-
-
-# Called to set default values of data settings
-def script_defaults(settings):
-    obs.obs_data_set_default_string(settings, PropertyKeys.LISTBOX_SOURCE_NAME.value, "")
-    obs.obs_data_set_default_string(settings, PropertyKeys.PATH_PATH_TO_SETTING_FILE.value, "")
-    obs.obs_data_set_default_string(settings, PropertyKeys.TXT_FILE_CONTENT.value, "File will be displayed here.")
-# Identifier of the hotkey set by OBS
-hotkey_id = obs.OBS_INVALID_HOTKEY_ID
 # Called at script load
 def script_load(settings):
-    pass
+    prepare(settings)
 
-# TODO could be elaborated to add "set values" and set them after reset.
-# Description displayed in the Scripts dialog window
-def script_description():
-  return """<center><h2>OBS Camera Reset Button</h2></center>
-            <p> Reset the Camera and trigger two commands. Go to <em>Settings
-            </em> then <em>Hotkeys</em> to select the key combination.</p><p>Check the <a href=
-            "https://github.com/obsproject/obs-studio/wiki/Scripting-Tutorial-Source-Shake.md">
-            Source Shake Scripting Tutorial</a> on the OBS Wiki for more information.</p>"""
-
-def on_path_update(props, prop, settings):
-  return True
-  #TODO mit dem hier müsste ich evtl eine modified list hinbekommen
-  
 
 def loadSettings(sourcename, reset: bool=True):
   source = obs.obs_get_source_by_name(sourcename)
@@ -115,13 +125,7 @@ def loadSettings(sourcename, reset: bool=True):
 #      obs.obs_data_set_string(settings, k, d);
 #apply
   
-settinginstance = None
-# Called after change of settings including once after script load
-# TODO on modification or something hook
-def script_update(settings):
-   global settinginstance;
-   settinginstance = settings
-   PropertyUtils.loadFileContentInField(settings)
+
 
 
 # TODO on signal remove hook
@@ -222,3 +226,10 @@ class PropertyUtils:
     
    
 
+
+def toObject(settings):
+   if settings:
+      filename = obs.obs_data_get_string(settings, PropertyKeys.PATH_PATH_TO_SETTING_FILE.value);
+      sourcename = obs.obs_data_get_string(settings, PropertyKeys.LISTBOX_SOURCE_NAME.value);
+      print(f"s:{sourcename} p:{filename}")
+      return {"source_name": sourcename, "file_name": filename}
