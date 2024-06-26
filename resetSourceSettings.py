@@ -71,7 +71,7 @@ def script_defaults(settings):
 
 # Description displayed in the Scripts dialog window
 def script_description():
-  return """<center><h2>OBS Source Reset and Set Default Values</h2></center>
+  return """<center><h2>OBS source setting reset and set values</h2></center>
             <p> Reset the source and load the values from the chosen json file into the source object. Go to <em>Settings
             </em> then <em>Hotkeys</em> to select the key combination. created by <a href=https://github.com/Blackstareye>Blackeye</a></p>
             If you like this Script you can support me via <a href=https://ko-fi.com/black_eye>Kofi</a>
