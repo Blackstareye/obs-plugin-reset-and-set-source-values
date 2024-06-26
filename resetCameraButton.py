@@ -1,4 +1,4 @@
-import obspython as obs
+import obspython as obs # type: ignore
 import json
 from pathlib import Path
 
@@ -6,12 +6,12 @@ from pathlib import Path
 from enum import Enum
 
 class PropertyKeys(Enum):
-    SOURCE_NAME = "source_name"
-    REFRESH_LIST = "refreshbutton"
-    PATH_TO_SETTING_FILE = "path_to_setting_file"
-    FILE_CONTENT_TXT = "fileInfo"
-    RESET_SETTINGS = "reset_settings"
-    PRINT_SETTINGS = "print_settings"
+    LISTBOX_SOURCE_NAME = "source_name"
+    BT_REFRESH_LIST = "refreshbutton"
+    PATH_PATH_TO_SETTING_FILE = "path_to_setting_file"
+    TXT_FILE_CONTENT = "fileInfo"
+    BT_RESET_SETTINGS = "reset_settings"
+    BT_PRINT_SETTINGS = "print_settings"
 
 print("Hello world!")
 
@@ -34,8 +34,9 @@ def on_shake_hotkey(pressed):
 
 # Called to set default values of data settings
 def script_defaults(settings):
-    pass
-
+    obs.obs_data_set_default_string(settings, "source_name", "")
+    obs.obs_data_set_default_double(settings, "frequency", 2)
+    obs.obs_data_set_default_int(settings, "amplitude", 10)
 # Identifier of the hotkey set by OBS
 hotkey_id = obs.OBS_INVALID_HOTKEY_ID
 # Called at script load
@@ -143,38 +144,38 @@ class PropertyUtils:
     def addFilePath(cls,props):
         p = Path(__file__).absolute()  # current script path
         pstr : str  = p.parent.as_posix()
-        path = obs.obs_properties_add_path(props, PropertyKeys.PATH_TO_SETTING_FILE.value, "Path to the setting file", obs.OBS_PATH_FILE, "json", pstr )
+        path = obs.obs_properties_add_path(props, PropertyKeys.PATH_PATH_TO_SETTING_FILE.value, "Path to the setting file", obs.OBS_PATH_FILE, "json", pstr )
         # TODO modified hook
         
     @classmethod
     def addFileContent(cls, props):
-       obs.obs_properties_add_text(props, PropertyKeys.FILE_CONTENT_TXT.value, "Displays the File Content", obs.OBS_TEXT_INFO | obs.OBS_TEXT_MULTILINE)
+       obs.obs_properties_add_text(props, PropertyKeys.TXT_FILE_CONTENT.value, "Displays the File Content", obs.OBS_TEXT_INFO | obs.OBS_TEXT_MULTILINE)
     
     @classmethod
     def resetSettings(cls, props, callback):
-       obs.obs_properties_add_button(props, PropertyKeys.RESET_SETTINGS.value, "Reset and set Defaults",
+       obs.obs_properties_add_button(props, PropertyKeys.BT_RESET_SETTINGS.value, "Reset and set Defaults",
         lambda props,prop: True if callback() else True)
     @classmethod
     def printSettings(cls, props, callback):
-       obs.obs_properties_add_button(props, PropertyKeys.PRINT_SETTINGS.value, "Print Settings",
+       obs.obs_properties_add_button(props, PropertyKeys.BT_PRINT_SETTINGS.value, "Print Settings",
         lambda props,prop: True if callback() else True)
 
     @classmethod
     def addSourceListAndButton(cls, props):
-        list_property = obs.obs_properties_add_list(props, PropertyKeys.SOURCE_NAME.value, "Source name",
+        list_property = obs.obs_properties_add_list(props, PropertyKeys.LISTBOX_SOURCE_NAME.value, "Source name",
               obs.OBS_COMBO_TYPE_EDITABLE, obs.OBS_COMBO_FORMAT_STRING)
         # Button to refresh the drop-down list
-        obs.obs_properties_add_button(props, PropertyKeys.REFRESH_LIST.value, "Refresh list of sources",
+        obs.obs_properties_add_button(props, PropertyKeys.BT_REFRESH_LIST.value, "Refresh list of sources",
         lambda props,prop: True if cls.fillSourceList(list_property) else True)
         cls.fillSourceList(list_property)
 
     @classmethod
     def loadFileContentInField(cls, settings):
-        file_path = obs.obs_data_get_string(settings, PropertyKeys.PATH_TO_SETTING_FILE.value);
+        file_path = obs.obs_data_get_string(settings, PropertyKeys.PATH_PATH_TO_SETTING_FILE.value);
         if file_path:
             contents = Path(file_path).read_text()
             # TODO load file from path
-            obs.obs_data_set_string(settings, PropertyKeys.FILE_CONTENT_TXT.value, contents);
+            obs.obs_data_set_string(settings, PropertyKeys.TXT_FILE_CONTENT.value, contents);
     
     @classmethod
     def fillSourceList(cls,list_property):
@@ -190,7 +191,7 @@ class PropertyUtils:
     @classmethod
     def getSource(cls):
        global settinginstance;
-       l = obs.obs_data_get_string(settinginstance, PropertyKeys.SOURCE_NAME.value);
+       l = obs.obs_data_get_string(settinginstance, PropertyKeys.LISTBOX_SOURCE_NAME.value);
        print(f"source is {l}")
        return l
     
