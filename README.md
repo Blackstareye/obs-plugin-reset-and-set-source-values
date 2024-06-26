@@ -1,6 +1,6 @@
 # Reset and overwrite values
 
-![Screenshot](paste2024_06_27_01_07_27.png)
+![Screenshot](screenshot.png)
 
 This OBS-Script can reset and overwrite values of a source.
 
