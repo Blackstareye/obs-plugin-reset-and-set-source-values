@@ -5,6 +5,9 @@ from pathlib import Path
 
 from enum import Enum
 
+FILERCLASS=obs.OBS_SOURCE_VIDEO
+#FILERCLASS=obs.OBS_SOURCE_AUDIO
+
 class PropertyKeys(Enum):
     LISTBOX_SOURCE_NAME = "source_name"
     BT_REFRESH_LIST = "refreshbutton"
@@ -13,7 +16,21 @@ class PropertyKeys(Enum):
     BT_RESET_SETTINGS = "reset_settings"
     BT_PRINT_SETTINGS = "print_settings"
 
-print("Hello world!")
+class DataObject(object):
+    source_name =""
+    file_path = ""
+
+    def __init__(self, **kwargs):
+        for key in kwargs:
+            if hasattr(self, key):
+              setattr(self, key, kwargs[key])
+    
+    def update(self,*data):
+       for dictionary in data:
+            for key in dictionary:
+                if hasattr(self, key):
+                  setattr(self, key, dictionary[key])
+
 
 def script_tick(seconds):
     pass
@@ -34,9 +51,9 @@ def on_shake_hotkey(pressed):
 
 # Called to set default values of data settings
 def script_defaults(settings):
-    obs.obs_data_set_default_string(settings, "source_name", "")
-    obs.obs_data_set_default_double(settings, "frequency", 2)
-    obs.obs_data_set_default_int(settings, "amplitude", 10)
+    obs.obs_data_set_default_string(settings, PropertyKeys.LISTBOX_SOURCE_NAME.value, "")
+    obs.obs_data_set_default_string(settings, PropertyKeys.PATH_PATH_TO_SETTING_FILE.value, "")
+    obs.obs_data_set_default_string(settings, PropertyKeys.TXT_FILE_CONTENT.value, "File will be displayed here.")
 # Identifier of the hotkey set by OBS
 hotkey_id = obs.OBS_INVALID_HOTKEY_ID
 # Called at script load
@@ -164,10 +181,11 @@ class PropertyUtils:
     def addSourceListAndButton(cls, props):
         list_property = obs.obs_properties_add_list(props, PropertyKeys.LISTBOX_SOURCE_NAME.value, "Source name",
               obs.OBS_COMBO_TYPE_EDITABLE, obs.OBS_COMBO_FORMAT_STRING)
+        
         # Button to refresh the drop-down list
         obs.obs_properties_add_button(props, PropertyKeys.BT_REFRESH_LIST.value, "Refresh list of sources",
-        lambda props,prop: True if cls.fillSourceList(list_property) else True)
-        cls.fillSourceList(list_property)
+        lambda props,prop: True if cls.fillSourceList(list_property, FILERCLASS) else True)
+        cls.fillSourceList(list_property, FILERCLASS)
 
     @classmethod
     def loadFileContentInField(cls, settings):
@@ -178,14 +196,21 @@ class PropertyUtils:
             obs.obs_data_set_string(settings, PropertyKeys.TXT_FILE_CONTENT.value, contents);
     
     @classmethod
-    def fillSourceList(cls,list_property):
+    def fillSourceList(cls,list_property, filters : int=None):
         # Fills the given list property object with the names of all sources plus an empty one
         sources = obs.obs_enum_sources()
         obs.obs_property_list_clear(list_property)
         obs.obs_property_list_add_string(list_property, "", "")
         for source in sources:
-            name = obs.obs_source_get_name(source)
-            obs.obs_property_list_add_string(list_property, name, name)
+            #flags = obs.obs_source_get_output_flags()
+            if filters:
+              flags = obs.obs_source_get_output_flags(source)
+              if flags & filters == filters:
+                name = obs.obs_source_get_name(source)
+                obs.obs_property_list_add_string(list_property, name, name)
+            else:
+                name = obs.obs_source_get_name(source)
+                obs.obs_property_list_add_string(list_property, name, name)
         obs.source_list_release(sources)
        
     @classmethod
