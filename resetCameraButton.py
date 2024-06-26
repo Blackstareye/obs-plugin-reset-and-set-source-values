@@ -6,7 +6,12 @@ from pathlib import Path
 from enum import Enum
 
 FILERCLASS=obs.OBS_SOURCE_VIDEO
+# log = obs.blog
+DEBUG = True
+USE_OBS_LOGS=False
 #FILERCLASS=obs.OBS_SOURCE_AUDIO
+
+      
 
 class PropertyKeys(Enum):
     LISTBOX_SOURCE_NAME = "source_name"
@@ -18,19 +23,25 @@ class PropertyKeys(Enum):
 
 class DataObject(object):
     source_name =""
-    file_path = ""
+    file_name = ""
 
     def __init__(self, **kwargs):
+        #print(kwargs)
         for key in kwargs:
             if hasattr(self, key):
+              log(f"Set: {key}:{kwargs[key]}")
               setattr(self, key, kwargs[key])
+            else:
+              log("Key is not in DataObject. Please fix it. {key}:{kwargs[key]}", throw_exception=True)
     
-    def update(self,*data):
-       for dictionary in data:
-            for key in dictionary:
-                if hasattr(self, key):
-                  setattr(self, key, dictionary[key])
-
+    # def update(self,*data):
+    #    for dictionary in data:
+    #         for key in dictionary:
+    #             if hasattr(self, key):
+    #               setattr(self, key, dictionary[key])
+                
+    def printObject(self):
+      print(f"Object: s:{self.source_name} p:{self.file_name}")
 
 # =================== script ======================
 
@@ -85,27 +96,30 @@ def script_load(settings):
 
 
 def loadSettings(sourcename, reset: bool=True):
+  # global dataObject; # not necessary cause object is only read
+  # source related entries
   source = obs.obs_get_source_by_name(sourcename)
   settings = obs.obs_source_get_settings(source)
 
   if reset:
     obs.obs_soure_reset_settings(settings);   
-  p = "/projects/tmp_dev/obs-plugin/python/data.json" #TODO echter pfad noch obs.obs_data_get_string(settings, PropertyKeys.PATH_TO_SETTING_FILE.value);
-
+  #p = "/projects/tmp_dev/obs-plugin/python/data.json" #TODO echter pfad noch obs.obs_data_get_string(settings, PropertyKeys.PATH_TO_SETTING_FILE.value);
+  dataObject.printObject()
+  p = dataObject.file_name
   data = obs.obs_data_create_from_json_file_safe(p, Path(p).joinpath("backup.json").as_posix());
-  print(f"path: {p}")
-  print(f"data {obs.obs_data_get_json(data)}")
+  log(f"path: {p}")
+  log(f"data {obs.obs_data_get_json(data)}")
   if data:
     jdata = json.loads(obs.obs_data_get_json(data))
-    print(f"data {jdata}")
   
   jsettings = json.loads(obs.obs_data_get_json(settings))
-  print(f"settings {jsettings}")
+  log(f"settings {jsettings}")
 
   for nk, nv in jdata.items():
         if nk in jsettings:
-            print(f"New Value ${nk} with {nv}")
-            obs.obs_data_set_bool(settings, nk, nv) #TODO entscheiden wann bool wann string
+            log(f"New Value ${nk} with {nv}", force_print=True)
+            ObsDataUtility.set_value(settings, nk, nv);
+            #obs.obs_data_set_bool(settings, nk, nv) #TODO entscheiden wann bool wann string
   obs.obs_source_update(source, settings)
 
   obs.obs_data_release(data)
@@ -150,8 +164,8 @@ def script_properties():
 def print_settings(source):
     source = obs.obs_get_source_by_name(source)
     settings = obs.obs_source_get_settings(source)
-    print("[---------- settings ----------")
-    print(obs.obs_data_get_json_pretty(settings))
+    log("[---------- settings ----------", force_print=True)
+    log(obs.obs_data_get_json_pretty(settings), force_print=True)
     obs.obs_data_release(settings)
     obs.obs_source_release(source)
 
@@ -221,15 +235,59 @@ class PropertyUtils:
     def getSource(cls):
        global settinginstance;
        l = obs.obs_data_get_string(settinginstance, PropertyKeys.LISTBOX_SOURCE_NAME.value);
-       print(f"source is {l}")
+       log(f"source is {l}")
        return l
     
-   
+class ObsDataUtility:
+   @classmethod
+   def set_value(cls, settings, name, value):
+      # Versuche, in einen Integer zu konvertieren
+      try:
+          log(f"trying int parsing for {value}")
+          v = int(value)
+          obs.obs_data_set_int(settings, name, v);
+          return
+      except ValueError:
+          pass
+      
+      # Versuche, in einen Float zu konvertieren
+      try:
+          log(f"trying double parsing for {value}")
+          f =  float(value)
+          obs.obs_data_set_double(settings, name, f);
+          return
+      except ValueError:
+          pass
+      
+      # Versuche, in einen Boolean zu konvertieren
+      log(f"trying bool parsing for {value}")
+      if value.lower() in ('true', '1', 'yes'):
+          obs.obs_data_set_double(settings, name, True);
+          return
+      elif value.lower() in ('false', '0', 'no'):
+          obs.obs_data_set_double(settings, name, False);
+          return
+      log(f"trying string parsing for {value}")
+      obs.obs_data_set_string(settings, name, value);
+      
+
 
 
 def toObject(settings):
    if settings:
       filename = obs.obs_data_get_string(settings, PropertyKeys.PATH_PATH_TO_SETTING_FILE.value);
       sourcename = obs.obs_data_get_string(settings, PropertyKeys.LISTBOX_SOURCE_NAME.value);
-      print(f"s:{sourcename} p:{filename}")
+      log(f"s:{sourcename} p:{filename}")
       return {"source_name": sourcename, "file_name": filename}
+
+
+
+def log(txt, throw_exception : bool=False,level=None, force_print=False):
+   if USE_OBS_LOGS:
+      level = level if level else obs.LOG_DEBUG if DEBUG else obs.LOG_INFO;
+      obs.blog(level, txt)
+   else:
+      if DEBUG or force_print:
+        print(txt)
+   if throw_exception:
+      raise Exception(f">>LOOK LOG \n {txt}")
